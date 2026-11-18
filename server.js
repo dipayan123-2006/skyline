@@ -35,11 +35,13 @@ try {
   dbUp = true;
   console.log('MongoDB connected');
 } catch (e) {
-  console.warn('MongoDB not reachable. Forecasts still work, but caching and saved cities are off.');
+  console.warn('MongoDB not reachable:', e.message);
+  console.warn('Forecasts still work, but caching and saved cities are off.');
 }
 
 /* ---------- app ---------- */
 const app = express();
+app.set('trust proxy', 1); // Render sits behind a proxy
 app.use(express.json({ limit: '10kb' }));
 app.use('/api', rateLimit({ windowMs: 60_000, limit: 120 }));
 
@@ -73,8 +75,23 @@ app.get('/api/forecast', ah(async (req, res) => {
     const hit = await Forecast.findOne({ key }).lean();
     if (hit) { res.set('X-Cache', 'HIT'); return res.json(hit.data); }
   }
-  const up = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&${FORECAST_FIELDS}`);
-  if (!up.ok) return res.status(502).json({ error: 'Forecast service is unavailable.' });
+
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&${FORECAST_FIELDS}`;
+  let up, lastErr;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      up = await fetch(url, { headers: { 'User-Agent': 'Skyline/1.0' }, signal: AbortSignal.timeout(10000) });
+      if (up.ok) break;
+      lastErr = `status ${up.status}: ${(await up.text()).slice(0, 200)}`;
+    } catch (e) {
+      lastErr = e.message;
+    }
+    await new Promise(r => setTimeout(r, 800));
+  }
+  if (!up || !up.ok) {
+    console.error('Open-Meteo failed:', lastErr);
+    return res.status(502).json({ error: 'Forecast service is unavailable.' });
+  }
   const data = await up.json();
   if (dbUp) await Forecast.findOneAndUpdate({ key }, { data, createdAt: new Date() }, { upsert: true });
   res.set('X-Cache', 'MISS');

@@ -7,7 +7,7 @@ export function demo(){
     hourly.time.push(ds(d)+`T${p(h)}:00`);hourly.temperature_2m.push(t);hourly.apparent_temperature.push(t-1);hourly.precipitation_probability.push(h>17&&h<22?55:10);hourly.wind_speed_10m.push(9)}
   const daily={time:[],weather_code:[],temperature_2m_max:[],temperature_2m_min:[],precipitation_probability_max:[],uv_index_max:[],sunrise:[],sunset:[]};
   for(let i=0;i<7;i++){const d=new Date(n.getFullYear(),n.getMonth(),n.getDate()+i);daily.time.push(ds(d));daily.weather_code.push([1,2,3,61,0,2,1][i]);daily.temperature_2m_max.push(23+i%3);daily.temperature_2m_min.push(11+i%2);daily.precipitation_probability_max.push([10,20,30,70,5,15,10][i]);daily.uv_index_max.push(5);daily.sunrise.push(ds(d)+'T06:40');daily.sunset.push(ds(d)+'T17:35')}
-  return{current:{time:ds(n)+`T${p(n.getHours())}:00`,temperature_2m:20,apparent_temperature:19,relative_humidity_2m:50,weather_code:2,wind_speed_10m:9,is_day:n.getHours()>6&&n.getHours()<18?1:0},hourly,daily};
+  return{sample:true,current:{time:ds(n)+`T${p(n.getHours())}:00`,temperature_2m:20,apparent_temperature:19,relative_humidity_2m:50,weather_code:2,wind_speed_10m:9,is_day:n.getHours()>6&&n.getHours()<18?1:0},hourly,daily};
 }
 
 export const wmo = c => WMO[c] || ['Unknown', '🌡️'];

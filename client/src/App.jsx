@@ -13,12 +13,22 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [favs, setFavs] = useState([]);
 
-  // Ask for the visitor's location, or fall back to London if they say no.
+  // Ask for the visitor's location, or fall back to London with the reason shown.
   const locate = () => {
-    const fallback = () => { setPlace({ lat: 51.51, lon: -0.13, name: 'London, United Kingdom' }); setStatus('Location is off, so here’s London. Search for your city above.'); };
+    const fallback = err => {
+      const why = err && err.code === 1 ? 'Location is blocked for this site. Allow it in your browser settings.'
+        : err && err.code === 3 ? 'Finding your location took too long.'
+        : 'Your location isn’t available.';
+      setPlace({ lat: 51.51, lon: -0.13, name: 'London, United Kingdom (location unavailable)' });
+      setStatus(why + ' Showing London. Search for your city above.');
+    };
     if (!navigator.geolocation) return fallback();
     setStatus('Finding your location…');
-    navigator.geolocation.getCurrentPosition(p => setPlace({ lat: p.coords.latitude, lon: p.coords.longitude, name: 'Your location' }), fallback, { timeout: 8000 });
+    navigator.geolocation.getCurrentPosition(
+      p => setPlace({ lat: p.coords.latitude, lon: p.coords.longitude, name: 'Your location' }),
+      fallback,
+      { timeout: 20000, maximumAge: 600000 }
+    );
   };
   useEffect(locate, []);
 
@@ -28,7 +38,7 @@ export default function App() {
     let live = true;
     fetch(`/api/forecast?lat=${place.lat}&lon=${place.lon}`)
       .then(r => { if (!r.ok) throw 0; return r.json(); })
-      .then(d => { if (live) { setData(d); setStatus(''); } })
+      .then(d => { if (live) { setData(d); setStatus(m => (m.startsWith('Searching') || m.startsWith('Finding') || m.startsWith('Saved') ? '' : m)); } })
       .catch(() => { if (live) { setData(demo()); setStatus('Couldn’t reach the forecast service, so you’re seeing sample data. Check your connection and search again.'); } });
     return () => { live = false; };
   }, [place]);
@@ -78,7 +88,7 @@ export default function App() {
         <p id="status" role="status">{status}</p>
 
         <section className="hero">
-          <p className="place">{place ? place.name : 'Loading forecast…'}</p>
+          <p className="place">{place ? place.name : 'Loading forecast…'}{data?.sample && ' · sample data, not live'}</p>
           {c && <>
             <div className="temp">{toUnit(c.temperature_2m, unit)}<sup>°{unit}</sup></div>
             <p className="cond">{wmo(c.weather_code)[0]}</p>
