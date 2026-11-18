@@ -37,9 +37,9 @@ export default function App() {
     if (!place) return;
     let live = true;
     fetch(`/api/forecast?lat=${place.lat}&lon=${place.lon}`)
-      .then(r => { if (!r.ok) throw 0; return r.json(); })
+      .then(async r => { if (!r.ok) throw new Error(`server replied ${r.status}: ${(await r.text()).slice(0, 120)}`); return r.json(); })
       .then(d => { if (live) { setData(d); setStatus(m => (m.startsWith('Searching') || m.startsWith('Finding') || m.startsWith('Saved') ? '' : m)); } })
-      .catch(() => { if (live) { setData(demo()); setStatus('Couldn’t reach the forecast service, so you’re seeing sample data. Check your connection and search again.'); } });
+      .catch(err => { if (live) { setData(demo()); setStatus('Couldn’t load live weather (' + err.message + '). Showing sample data.'); } });
     return () => { live = false; };
   }, [place]);
 

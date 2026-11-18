@@ -43,6 +43,7 @@ try {
 const app = express();
 app.set('trust proxy', 1); // Render sits behind a proxy
 app.use(express.json({ limit: '10kb' }));
+app.use('/api', (req, res, next) => { res.on('finish', () => console.log(req.method, req.originalUrl, res.statusCode)); next(); });
 app.use('/api', rateLimit({ windowMs: 60_000, limit: 120 }));
 
 const ah = fn => (req, res, next) => fn(req, res, next).catch(next);
